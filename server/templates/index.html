@@ -81,6 +81,137 @@
                 border-radius: 10px;
                 text-align: center;
             }
+
+            .stat-number {
+                font-size: 2.5em;
+                font-weight: bold;
+                margin-bottom: 5px;
+            }
+
+            .stat-label {
+                font-size: 1.1em;
+                opacity: 0.9;
+            }
+
+            .form-group {
+                margin-bottom: 20px;
+            }
+
+            .form-group label {
+                display: block;
+                margin-bottom: 5px;
+                font-weight: bold;
+                color: #333;
+            }
+
+            .form-group input,
+            .form-group select {
+                width: 100%;
+                padding: 12px;
+                border: 2px solid #e1e5e9;
+                border-radius: 8px;
+                font-size: 16px;
+                transition: border-color 0.3s;
+            }
+
+            .form-group input:focus,
+            .form-group select:focus {
+                outline: none;
+                border-color: #667eea;
+            }
+
+            .btn {
+                background: linear-gradient(135deg, rgb(220, 223, 236) 0%,rgb(42, 51, 183) 100%);
+                color: white;
+                border: none;
+                padding: 12px 25px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 16px;
+                transition: transform 0.2s;
+            }
+
+            .btn:hover {
+                transform: translateY(-2px);
+            }
+
+            .btn-danger {
+                background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            }
+
+            .btn-success {
+                background: linear-gradient(135deg, #2ed573 0%, #1e90ff 100%)
+            }
+
+            .table-container {
+                overflow-x: auto;
+                margin-top: 20px;
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                background: white;
+                border-radius: 10px;
+                overflow: hidden;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.1)
+            }
+
+            th, td {
+                padding: 15px;
+                text-align: left;
+                border-bottom: 1px solid #e1e5e9;
+            }
+
+            th {
+                background: #f8f9fa;
+                font-weight: bold;
+                color: #333;
+            }
+
+            tr:hover {
+                background: #f8f9fa
+            }
+
+            .low-stock {
+                background: #fff3cd;
+                color: #856404;
+                padding: 5px 10px;
+                border-radius: 5px;
+                font-size: 0.9em;
+            }
+
+            .stock-controls {
+                display: flex;
+                gap: 10px;
+                align-items: center;
+            }
+            
+            .stock-input {
+                width: 80px;
+                padding: 5px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+            }
+            
+            .alert {
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .alert-success {
+                background: #d4edda;
+                color: #155724;
+                border: 1px solid #c3e6cb;
+            }
+            
+            .alert-error {
+                background: #f8d7da;
+                color: #721c24;
+                border: 1px solid #f5c6cb;
+            }
+
         </style>
     </head>
     <body>
@@ -262,7 +393,8 @@
             </div>
         </div>
         <script>
-            const API_BASE = 'http://localhost:5000/api';
+            //const API_BASE = 'http://localhost:5000/api';
+            const API_BASE = 'http://127.0.0.1:5500/api'
 
             // Tab switching
             function showTab(tabName) {
@@ -342,8 +474,261 @@
             }
 
             // Product functions
-            
+            async function loadProducts() {
+                try {
+                    const response = await fetch(`${API_BASE}/products`)
+                    const products = await response.json()
 
+                    const tableBody = document.querySelector('#productsTable tbody')
+                    tableBody.innerHTML = products.map(product => `
+                        <tr>
+                            <td>${product.name}</td>
+                            <td>${product.sku}</td>
+                            <td>${product.brand?.name || 'N/A'}</td>
+                            <td>${product.package_size}</td>
+                            <td>${product.price}</td>
+                            <td>${product.type}</td>
+                            <td>${product.abv}</td>
+                            <td>${product.stock < 10 ? `<span class="low-stock">${product.stock}</span>` : product.stock}</td>
+                            <td>
+                                <button class="btn btn-danger" onclick="deleteProduct(${product.id})">Delete</button>
+                            </td>
+                        </tr>
+                    `).join('')
+                } catch (error) {
+                    console.error('Error loading products:', error)
+                }
+            }
+
+            async function loadBrandsForSelect() {
+                try {
+                    const response = await fetch(`${API_BASE}/brands`)
+                    const brands = await response.json()
+
+                    const select = document.getElementById('productBrand')
+                    select.innerHTML = brands.map(brand => 
+                        `<option value="${brand.id}">${brand.name}</option>`
+                    ).join('')
+                } catch (error) {
+                    console.error('Error loading brands:', error)
+                }
+            }
+
+            function showAddProductForm() {
+                document.getElementById('addProductForm').style.display = 'block'
+            }
+
+            function hideAddProductForm() {
+                document.getElementById('addProductForm').style.display = 'none'
+                document.getElementById('productForm').reset()
+            }
+
+            document.getElementById('productForm').addEventListener('submit', async (e) => {
+                e.preventDefault()
+
+                const productData = {
+                    name: document.getElementById('productName').value,
+                    sku: document.getElementById('productSku').value,
+                    brand_id: parseInt(document.getElementById('productBrand').value),
+                    package_size: document.getElementById('productPackageSize').value,
+                    price: parseFloat(document.getElementById('productPrice').value),
+                    type: document.getElementById('productType').value,
+                    abv: parseFloat(document.getElementById('productAbv').value) || 0,
+                    stock: parseInt(document.getElementById('productStock').value)
+                }
+
+                try {
+                    const response = await fetch(`${API_BASE}/products`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(productData)
+                    })
+
+                    if (response.ok) {
+                        alert('product added successfully!')
+                        hideAddProductForm()
+                        loadProducts()
+                        loadDashboard()
+                    } else {
+                        const error = await response.json()
+                        alert('Error: ' + error.error)
+                    }
+                } catch (error) {
+                    console.error('Error adding product:', error)
+                    alert('Error adding product')
+                }
+            })
+
+            async function deleteProduct(productId) {
+                if (confirm('Are you sure you want to delete this product?')) {
+                    try {
+                        const response = await fetch(`${API_BASE}/products/${productId}`, {
+                            method: 'DELETE'
+                        })
+
+                        if (response.ok) {
+                            alert('Product deleted successfully!')
+                            loadProducts()
+                            loadDashboard()
+                        } else {
+                            const error = await response.json()
+                            alert('Error: ' + error.error)
+                        }
+                    } catch (error) {
+                        console.error('Error deleteing product:', error)
+                    }
+                }
+            }
+
+            // Brand functions
+            async function loadBrands() {
+                try {
+                    const response = await fetch(`${API_BASE}/brands`)
+                    const brands = await response.json()
+
+                    const tableBody = document.querySelector('#brandsTable tbody')
+                    tableBody.innerHTML = brands.map(brand => `
+                        <tr>
+                            <td>${brand.name}</td>
+                            <td>${brand.country}</td>
+                            <td>${brand.description}</td>
+                            <td>
+                                <button class="btn btn-danger" onclick="deleteBrand(${brand.id})">Delete</button>
+                            </td>
+                        </tr>
+                    `).join('')
+                } catch (error) {
+                    console.error('Error loading brands:', error)
+                }
+            }
+
+            function showAddBrandForm() {
+                document.getElementById('addBrandForm').style.display = 'block';
+            }
+            
+            function hideAddBrandForm() {
+                document.getElementById('addBrandForm').style.display = 'none';
+                document.getElementById('brandForm').reset();
+            }
+
+            document.getElementById('brandForm').addEventListener('submit', async (e) => {
+                e.preventDefault()
+
+                const brandData = {
+                    name:document.getElementById('brandName').value,
+                    country: document.getElementById('brandCountry').value,
+                    description: document.getElementById('brandDescription').value
+                }
+
+                try {
+                    const response = await fetch(`${API_BASE}/brands`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(brandData)
+                    })
+
+                    if (response.ok) {
+                        alert('Brand added successfully!')
+                        hideAddBrandForm()
+                        loadBrands()
+                        loadDashboard()
+                    } else {
+                        const error = await response.json()
+                        alert('Error: ' + error.error)
+                    }
+                } catch (error) {
+                    console.error('Error adding brand', error)
+                    alert('Error adding brand')
+                }
+            })
+
+            async function deleteBrand(brandId) {
+                if (confirm('Are you sure you want to delete this brand?')) {
+                    try {
+                        const response = await fetch(`${API_BASE}/brands/${brandId}`, {
+                            method: 'DELETE'
+                        });
+                        
+                        if (response.ok) {
+                            alert('Brand deleted successfully!');
+                            loadBrands();
+                            loadDashboard();
+                        } else {
+                            const error = await response.json();
+                            alert('Error: ' + error.error);
+                        }
+                    } catch (error) {
+                        console.error('Error deleting brand:', error);
+                        alert('Error deleting brand');
+                    }
+                }
+            }
+
+            // Stock management functions
+            async function loadStockManagement() {
+                try {
+                    const response = await fetch(`${API_BASE}/products`);
+                    const products = await response.json();
+                    
+                    const tableBody = document.querySelector('#stockTable tbody');
+                    tableBody.innerHTML = products.map(product => `
+                        <tr>
+                            <td>${product.name}</td>
+                            <td>${product.brand?.name || 'N/A'}</td>
+                            <td>${product.stock < 10 ? `<span class="low-stock">${product.stock}</span>` : product.stock}</td>
+                            <td>$${product.price}</td>
+                            <td class="stock-controls">
+                                <input type="number" class="stock-input" id="stockInput${product.id}" placeholder="Qty" min="1">
+                                <button class="btn btn-success" onclick="adjustStock(${product.id}, 'add')">Add</button>
+                                <button class="btn btn-danger" onclick="adjustStock(${product.id}, 'subtract')">Remove</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                } catch (error) {
+                    console.error('Error loading stock management:', error);
+                }
+            }
+            
+            async function adjustStock(productId, action) {
+                const amountInput = document.getElementById(`stockInput${productId}`);
+                const amount = parseInt(amountInput.value);
+                
+                if (!amount || amount <= 0) {
+                    alert('Please enter a valid amount');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`${API_BASE}/products/${productId}/adjust-stock`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            amount: amount,
+                            action: action
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        alert(`Stock ${action}ed successfully! New stock: ${result.new_stock}`);
+                        amountInput.value = '';
+                        loadStockManagement();
+                        loadDashboard();
+                    } else {
+                        alert('Error: ' + result.error);
+                    }
+                } catch (error) {
+                    console.error('Error adjusting stock:', error);
+                    alert('Error adjusting stock');
+                }
+            }
 
             // Initialize dashboard on page load
             window.onload = function() {
