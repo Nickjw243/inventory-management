@@ -41,17 +41,17 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Python
-__pychache__/
-*.pyc
+# # Python
+# __pychache__/
+# *.pyc
 
-# Virtual environment
-venv/
-.venv/
+# # Virtual environment
+# venv/
+# .venv/
 
-# VS Code
-.vscode/
+# # VS Code
+# .vscode/
 
-# Database
-*.db
-instance/
+# # Database
+# *.db
+# instance/

@@ -1,4 +1,9 @@
 from flask import make_response, request, jsonify, render_template
+# from flask_jwt_extended import {
+#     create_access_token,
+#     get_jwt_identity,
+#     jwt_required,
+# }
 
 from config import app, db, api
 from models import Brands, Products
@@ -16,7 +21,12 @@ def api_info():
             'brands': '/api/brands',
             'products': '/api/products',
             'low_stock': '/api/products/low-stock',
-            'summary': '/api/inventory/summary'
+            'summary': '/api/inventory/summary',
+            # 'dcs': '/api/dcs',
+            # 'dc_inventory': '/api/dcs/<id>/inventory',
+            # 'auth_register': '/api/auth/register',
+            # 'auth_login': '/api/auth/login',
+            # 'me': '/api/auth/me'
         }
     })
     
@@ -210,7 +220,7 @@ def adjust_stock(product_id):
         return jsonify({'error': 'Action must be "add" or "subtract"'}), 400
     
     try:
-        db.sesion.commit()
+        db.session.commit()
         return jsonify({
             'message': f'Stock {action}ed successfully',
             'new_stock': product.stock
