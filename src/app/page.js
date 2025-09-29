@@ -376,7 +376,7 @@ function Home() {
           alert('Please enter a valid amount');
           return;
       }
-      const adjustment = action === "delete" ? -amount : amount
+      const adjustment = action === "subtract" ? -amount : amount
 
       try {
           const response = await fetch(`${API_BASE}/products/${productId}/adjust-stock`, {
@@ -392,7 +392,7 @@ function Home() {
           const result = await response.json();
           
           if (response.ok) {
-              alert(`Stock ${action === "delete" ? "deleted" : "added"} successfully! New stock: ${result.new_stock}`);
+              alert(`Stock ${action === "subtract" ? "removed" : "added"} successfully! New stock: ${result.new_stock}`);
               // amountInput.value = '';
               loadProducts();
               loadDashboard();
@@ -501,7 +501,7 @@ function Home() {
                     </div>
                     <div className="form-group">
                       <label>Type:</label>
-                      <input id="ProductType" />
+                      <input id="productType" />
                     </div>
                     <div className="form-group">
                       <label>ABV:</label>
@@ -622,8 +622,10 @@ function Home() {
                           <td>${p.price}</td>
                           <td className="stock-controls">
                             <input type="number" className="stock-input" id="stockInputs${p.id}" placeholder="Qty" min="1" ref={(el) => (inputRef = el)}></input>
-                            <button className="btn btn-success" onClick={() => adjustStock(p.id, "add", parseInt(inputRef.value))}>Add</button>
-                            <button className="btn btn-danger" onClick={() => adjustStock(p.id, "subtract", parseInt(inputRef.value))}>Delete</button>
+                            <button className="btn btn-success" onClick={async () => { await adjustStock(p.id, "add", parseInt(inputRef.value)) 
+                              inputRef.value = ""}}>Add</button>
+                            <button className="btn btn-danger" onClick={async () => {await adjustStock(p.id, "subtract", parseInt(inputRef.value))
+                              inputRef.value = ""}}>Delete</button>
                           </td>
                         </tr>
                       )
