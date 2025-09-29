@@ -1,12 +1,12 @@
 from flask import make_response, request, jsonify, render_template
-# from flask_jwt_extended import {
-#     create_access_token,
-#     get_jwt_identity,
-#     jwt_required,
-# }
+from flask_jwt_extended import (
+    create_access_token,
+    get_jwt_identity,
+    jwt_required,
+)
 
 from config import app, db, api
-from models import Brands, Products
+from models import Brands, Products, DistributionCenter, Inventory, User
 
 @app.route('/')
 def home():
@@ -22,11 +22,11 @@ def api_info():
             'products': '/api/products',
             'low_stock': '/api/products/low-stock',
             'summary': '/api/inventory/summary',
-            # 'dcs': '/api/dcs',
-            # 'dc_inventory': '/api/dcs/<id>/inventory',
-            # 'auth_register': '/api/auth/register',
-            # 'auth_login': '/api/auth/login',
-            # 'me': '/api/auth/me'
+            'dcs': '/api/dcs',
+            'dc_inventory': '/api/dcs/<id>/inventory',
+            'auth_register': '/api/auth/register',
+            'auth_login': '/api/auth/login',
+            'me': '/api/auth/me'
         }
     })
     
@@ -34,9 +34,7 @@ def api_info():
 @app.route('/api/brands', methods=['GET'])
 def get_brands():
     """Get all brands"""
-    print("Brands type:", Brands)
     brands = Brands.query.all()
-    print("Brands.query result:", brands)
     brands_dict = [brand.to_dict(rules=('-products',)) for brand in brands]
     response = make_response(
         brands_dict,
@@ -202,14 +200,14 @@ def delete_product(product_id):
 def adjust_stock(product_id):
     """Adjust product stock (add or subtract)"""
     product = Products.query.get_or_404(product_id)
-    data = request.get_json()
-    
-    if not data or 'amount' not in data:
+    data = request.get_json() or {}
+    if 'amount' not in data:
         return jsonify({'error': 'Amount is required'}), 400
-    
     amount = data['amount']
-    action = data.get('action', 'add')  # add or subtract
-    
+    action = data.get('action', 'add')
+    inv_count = Inventory.query.filter_by(product_id=product.id).count()
+    if inv_count > 0:
+        return jsonify({'error': 'Per-DC inventory exists. Use /api/dcs/<dc_id>/inventory/<product_id>/adjust'}), 400
     if action == 'add':
         product.stock += amount
     elif action == 'subtract':
@@ -217,14 +215,10 @@ def adjust_stock(product_id):
             return jsonify({'error': 'Insufficient stock'}), 400
         product.stock -= amount
     else:
-        return jsonify({'error': 'Action must be "add" or "subtract"'}), 400
-    
+        return jsonify({'error': 'Action must be add or subtract'}), 400
     try:
         db.session.commit()
-        return jsonify({
-            'message': f'Stock {action}ed successfully',
-            'new_stock': product.stock
-        })
+        return jsonify({'message': f'Stock {action}ed successfully', 'new_stock': product.stock})
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 400
@@ -241,7 +235,9 @@ def get_low_stock_products():
 def get_inventory_summary():
     """Get inventory summary statistics"""
     total_products = Products.query.count()
-    total_stock = db.session.query(db.func.sum(Products.stock)).scalar() or 0
+    total_stock = db.session.query(db.func.sum(Inventory.quantity)).scalar()
+    if total_stock is None:
+        total_stock = db.session.query(db.func.sum(Products.stock)).scalar() or 0
     low_stock_count = Products.query.filter(Products.stock < 10).count()
     total_brands = Brands.query.count()
     
@@ -251,6 +247,134 @@ def get_inventory_summary():
         'low_stock_items': low_stock_count,
         'total_brands': total_brands
     })
+    
+# Distribution Centers
+@app.route('/api/dcs', methods=['GET'])
+def list_dcs():
+    dcs = DistributionCenter.query.all()
+    return jsonify([dc.to_dict() for dc in dcs])
+
+@app.route('/api/dcs/<int:dc_id>/inventory', methods=['GET'])
+def dc_inventory(dc_id):
+    dc = DistributionCenter.query.get_or_404(dc_id)
+    inventories = Inventory.query.filter_by(distribution_center_id=dc.id).all()
+    result = []
+    for inv in inventories:
+        item = inv.to_dict(rules=('-product.brand.products', '-distribution_center'))
+        item['product'] = inv.product.to_dict(rules=(-'brand.products', '-inventories'))
+        result.append(item)
+    return jsonify({
+        'distribution_center': dc.to_dict(),
+        'inventory': result
+    })
+    
+@app.route('/api/dcs/<int:dc_id>/inventory/<int:product_id>/adjust', methods=['POST'])
+def adjust_dc_inventory(dc_id, product_id):
+    dc = DistributionCenter.query.get_or_404(dc_id)
+    product = Products.query.get_or_404(product_id)
+    data = request.get_json() or {}
+    amount = data.get('amount')
+    action = data.get('action', 'add')
+    if amount is None:
+        return jsonify({'error': 'amount is required'}), 400
+    inv = Inventory.query.filet_by(distribution_center_id = dc.id, product_id=product.id).first()
+    if not inv:
+        inv = Inventory(distribution_center_id=dc.id, product_id=product.id, quantity=0)
+        db.session.add(inv)
+    if action == 'add':
+        inv.quantity += amount
+    elif action == 'subtract':
+        if inv.quantity - amount < 0:
+            return jsonify({'error': 'Insufficient stock at DC'}), 400
+        inv.quantity -= amount
+    else:
+        return jsonify({'error': 'action must be add or subtract'}), 400
+    try:
+        db.sesson.commit()
+        return jsonify(inv.to_dict())
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
+    
+@app.route('/api/dcs/transfer', methods=['POST'])
+def transfer_between_dcs():
+    data = request.get_json() or {}
+    product_id = data.get('product_id')
+    from_dc_id = data.get('from_dc_id')
+    to_dc_id = data.get('to_dc_id')
+    amount = data.get('amount')
+    if not all([product_id, from_dc_id, to_dc_id, amount]):
+        return jsonify({'error': 'product_id, from_dc_id, to_dc_id, amount are required'}), 400
+    if from_dc_id == to_dc_id:
+        return jsonify({'error': 'from and to DC must be different'}), 400
+    product = Products.query.get_or_404(product_id)
+    from_dc = DistributionCenter.query.get_or_404(from_dc_id)
+    to_dc = DistributionCenter.query.get_or_404(to_dc_id)
+    from_inv = Inventory.query.filter_by(distribution_center_id=from_dc.id, product_id=product.id).first()
+    if not from_inv or from_inv.quantity < amount:
+        return jsonify({'error': 'Insufficient stock at source DC'}), 400
+    to_inv = Inventory.query.filter_by(distribution_center_id=to_dc.id, product_id=product.id).first()
+    if not to_inv:
+        to_inv = Inventory(distribution_center_id=to_dc.id, product_id=product.id, quantity=0)
+        db.session.add(to_inv)
+    from_inv.quantity -= amount
+    to_inv.quantity += amount
+    try:
+        db.session.commit()
+        return jsonify({'message': 'Transfer complete'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
+    
+# Auth endpoints
+@app.route('/api/auth/register', methods=['POST'])
+def register():
+    data = request.get_json() or {}
+    username = data.get('username')
+    password = data.get('password')
+    dc_id = data.get('distribution_center_id')
+    if not username or not password:
+        return jsonify({'error': 'username and password are required'}), 400
+    if User.query.filter_by(username=username).first():
+        return jsonify({'error': 'username already exists'}), 400
+    user = User(username=username, password_hash=_hash_password(password), distribution_center_id=dc_id)
+    db.session.add(user)
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
+    token = create_access_token(identity={'id': user.id, 'username': user.username})
+    return jsonify({'access_token': token})
+
+@app.route('/api/auth/login', methods=['POST'])
+def login():
+    data = request.get_json() or {}
+    username = data.get('username')
+    password = data.get('password')
+    if not username or not password:
+        return jsonify({'error': 'username and password are required'}), 400
+    user = User.query.filter_by(username=username).first()
+    if not user or not _verify_password(password, user.password_hash):
+        return jsonify({'error': 'invalid credentials'}), 401
+    token = create_access_token(identity={'id': user.id, 'username': user.username})
+    return jsonify({'access_token': token})
+
+@app.route('/api/auth/me', methods=['GET'])
+@jwt_required()
+def me():
+    ident = get_jwt_identity() or {}
+    user = User.query.get_or_404(ident.get('id'))
+    return jsonify(user.to_dict())
+
+# Helpers
+from werkzeug.security import generate_password_hash, check_password_hash
+
+def _hash_password(password):
+    return generate_password_hash(password)
+
+def _verify_password(password, password_hash):
+    return check_password_hash(password_hash, password)
 
 # Error handling
 @app.errorhandler(404)

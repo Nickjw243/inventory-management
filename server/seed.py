@@ -1,5 +1,6 @@
 from config import app, db
-from models import Brands, Products
+from models import Brands, Products, DistributionCenter, Inventory, User
+from werkzeug.security import generate_password_hash
 
 if __name__ == '__main__':
     with app.app_context():
@@ -134,6 +135,61 @@ if __name__ == '__main__':
             )
         ]
         db.session.add_all(products)
+        db.session.commit()
+        
+        print("Seeding distribution centers...")
+        dcs = [
+            DistributionCenter(
+                name='Northeast DC',
+                code='NE',
+                city='Newark',
+                state='NJ'
+            ),
+            DistributionCenter(
+                name='Southeast DC', 
+                code='SE', 
+                city='Atlanta', 
+                state='GA'
+            ),
+            DistributionCenter(
+                name='Midwest DC', 
+                code='MW', 
+                city='Chicago', 
+                state='IL'
+            ),
+            DistributionCenter(
+                name='Southwest DC', 
+                code='SW', 
+                city='Dallas', 
+                state='TX'
+            ),
+            DistributionCenter(
+                name='West DC', 
+                code='WE', 
+                city='Los Angeles', 
+                state='CA'
+            ),
+        ]
+        db.session.add_all(dcs)
+        db.session.commit()
+        
+        print("Seeding per-DC inventory...")
+        # Simple varying quantities across DCs
+        all_products = Products.query.all()
+        base_quantities = [40, 30, 20, 10, 5]
+        for idx, dc in enumerate(dcs):
+            for p in all_products:
+                qty = max(0, (p.stock // 5) + base_quantities[idx] - (p.id % 7))
+                db.session.add(Inventory(product_id=p.id, distribution_center_id=dc.id, quantity=qty))
+        db.session.commit()
+
+        print("Creating sample users assigned to DCs...")
+        users = [
+            User(username='manager_ne', password_hash=generate_password_hash('password'), distribution_center_id=dcs[0].id, role='manager'),
+            User(username='manager_se', password_hash=generate_password_hash('password'), distribution_center_id=dcs[1].id, role='manager'),
+            User(username='manager_mw', password_hash=generate_password_hash('password'), distribution_center_id=dcs[2].id, role='manager'),
+        ]
+        db.session.add_all(users)
         db.session.commit()
         
         print("Database seeded successfully!")
