@@ -35,8 +35,6 @@ body {
 
 .header {
     background: linear-gradient(135deg, rgb(193, 195, 205) 0%,rgb(42, 51, 183) 100%);
-    /* color: white; */
-    /* padding: 25px; */
     text-align: center;
 }
 
@@ -50,7 +48,6 @@ body {
     padding: 15px 20px;
     background: white;
     border: none;
-    /* cursor: pointer; */
     font-size: 20px;
     transition: all 0.3s;
     text-align: left;
@@ -73,7 +70,6 @@ body {
 }
 
 .tab-pane {
-    /* display: none; */
     text-align: left;
 }
 
@@ -94,6 +90,7 @@ body {
     padding: 25px;
     border-radius: 10px;
     text-align: center;
+    font-weight: bold;
 }
 
 .stat-number {
