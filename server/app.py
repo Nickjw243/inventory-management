@@ -223,27 +223,49 @@ def adjust_stock(product_id):
         db.session.rollback()
         return jsonify({'error': str(e)}), 400
     
-@app.route('/api/products/low-stock', methods=['GET'])
-def get_low_stock_products():
+@app.route('/api/dcs/<int:dc_id>/low-stock', methods=['GET'])
+def get_low_stock_products_for_dc(dc_id):
     """Get products with low stock"""
     threshold = request.args.get('threshold', 10, type=int)
-    products = Products.query.filter(Products.stock < threshold).all()
-    products_dict = [product.to_dict(rules=('-brand.products',)) for product in products]
+    inventories = Inventory.query.filter(
+        Inventory.distribution_center_id == dc_id,
+        Inventory.quantity < threshold
+    ).all()
+    products_dict = [inv.to_dict() for inv in inventories]
     return jsonify(products_dict)
 
-@app.route('/api/inventory/summary', methods=['GET'])
-def get_inventory_summary():
-    """Get inventory summary statistics"""
-    total_products = Products.query.count()
-    total_stock = db.session.query(db.func.sum(Inventory.quantity)).scalar()
-    if total_stock is None:
-        total_stock = db.session.query(db.func.sum(Products.stock)).scalar() or 0
-    low_stock_count = Products.query.filter(Products.stock < 10).count()
-    total_brands = Brands.query.count()
+# @app.route('/api/inventory/summary', methods=['GET'])
+# def get_inventory_summary():
+#     """Get inventory summary statistics"""
+#     total_products = Products.query.count()
+#     total_stock = db.session.query(db.func.sum(Inventory.quantity)).scalar()
+#     if total_stock is None:
+#         total_stock = db.session.query(db.func.sum(Products.stock)).scalar() or 0
+#     low_stock_count = Products.query.filter(Products.stock < 10).count()
+#     total_brands = Brands.query.count()
+    
+#     return jsonify({
+#         'total_products': total_products,
+#         'total_stock_value': float(total_stock),
+#         'low_stock_items': low_stock_count,
+#         'total_brands': total_brands
+#     })
+    
+@app.route("/api/dcs/<int:dc_id>/summary", methods=['GET'])
+def get_dc_summary(dc_id):
+    dc = DistributionCenter.query.get(dc_id)
+    if not dc:
+        return jsonify({"error": "Distribution center not found"}), 404
+    
+    inventories = Inventory.query.filter_by(distribution_center_id=dc_id).all()
+    total_products = len(inventories)
+    total_stock = sum(inv.quantity for inv in inventories)
+    low_stock_count = sum(1 for inv in inventories if inv.quantity < 10)
+    total_brands = len(set(inv.product.brand_id for inv in inventories))
     
     return jsonify({
         'total_products': total_products,
-        'total_stock_value': float(total_stock),
+        'total_stock_value': total_stock,
         'low_stock_items': low_stock_count,
         'total_brands': total_brands
     })
@@ -261,7 +283,7 @@ def dc_inventory(dc_id):
     result = []
     for inv in inventories:
         item = inv.to_dict(rules=('-product.brand.products', '-distribution_center'))
-        item['product'] = inv.product.to_dict(rules=(-'brand.products', '-inventories'))
+        item['product'] = inv.product.to_dict(rules=('-brand.products', '-inventories'))
         result.append(item)
     return jsonify({
         'distribution_center': dc.to_dict(),

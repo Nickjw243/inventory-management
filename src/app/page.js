@@ -449,8 +449,65 @@
 
 "use client"
 
+import { useEffect, useState } from "react"
+import { apiGet } from "./apiClient"
+import "./index.css"
+
 function Home() {
-  
+    const [dcs, setDcs] = useState([])
+    const [selected, setSelected] = useState("")
+    const [error, setError] = useState("")
+    // const [activeTab, setActiveTab] = useState("dashboard")
+
+    useEffect(() => {
+        (async () => {
+            try {
+                const list = await apiGet("/api/dcs")
+                setDcs(list)
+                if (list?.length) setSelected(String(list[0].id))
+            } catch (e) {
+                setError(String(e))
+            }
+        })()
+    }, [])
+
+    function goToSelected() {
+        if (selected) window.location.href = `/dcs/${selected}`
+    }
+
+    return (
+        <div className="container">
+            <div className="header">
+                <h1>Beer Inventory System</h1>
+                {/* <div className="nav-tabs">
+                    {["All DCs"].map((tab) => (
+                        <button
+                            key={tab}
+                            className={`nav-tab ${activeTab === tab ? "active" : ""}`}
+                            onClick={() => setActiveTab(tab)}
+                            >{tab[0].toUpperCase() + tab.slice(1)}</button>
+                    ))}
+                </div> */}
+                <div className="tab-content">
+                    <div id="home" className="tab-pane active">
+                        <h2>Choose a Distribution Center</h2>
+                        {error && <p>{error}</p>}
+                        <div>
+                            <select value={selected} onChange={(e) => setSelected(e.target.value)}
+                            >
+                                {dcs.map((dc) => (
+                                    <option key={dc.id} value={dc.id}>
+                                        {dc.name} ({dc.code})
+                                    </option>
+                                ))}
+                            </select>
+                            <button onClick={goToSelected} disabled={!selected}>View</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
 }
 
 export default Home
