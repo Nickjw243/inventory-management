@@ -21,9 +21,9 @@ export default function DCProductsPage({ params }) {
                 const data = await apiGet(`/api/dcs/${id}/inventory`)
                 setDc(data.distribution_center)
                 setProducts(data.inventory || [])
-            } catch (err) {
-                console.error("Error loading products:", err)
-                setError(String(err))
+            } catch (error) {
+                console.error("Error loading products:", error)
+                setError(String(error))
             }
         }
         loadProducts()
@@ -33,6 +33,7 @@ export default function DCProductsPage({ params }) {
         <div className="container">
             <header className="header">
                 <h1>{dc?.name || "DC"} - Products</h1>
+                {error && <p>{error}</p>}
                 <DCNavTabs dcId={id} />
             </header>
             <div className="tab-content">
@@ -47,6 +48,7 @@ export default function DCProductsPage({ params }) {
                                 <th>Price</th>
                                 <th>Quantity</th>
                                 <th>Brand</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -60,6 +62,9 @@ export default function DCProductsPage({ params }) {
                                     <td>{item.product?.price?.toFixed(2)}</td>
                                     <td>{item.quantity}</td>
                                     <td>{item.product?.brand?.name}</td>
+                                    <td>
+                                        <button className="btn btn-danger">Delete</button>
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>

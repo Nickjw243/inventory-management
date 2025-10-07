@@ -31,24 +31,46 @@ def api_info():
     })
     
 # Brand endpoints
-@app.route('/api/brands', methods=['GET'])
-def get_brands():
-    """Get all brands"""
-    brands = Brands.query.all()
-    brands_dict = [brand.to_dict(rules=('-products',)) for brand in brands]
-    response = make_response(
-        brands_dict,
-        200
+@app.route('/api/dcs/<int:dc_id>/brands', methods=['GET'])
+def get_brands_for_dc(dc_id):
+    """Get all brands for a DC"""
+    dc = DistributionCenter.query.get_or_404(dc_id)
+    
+    brands = (
+        db.session.query(Brands)
+        .join(Products, Products.brand_id == Brands.id)
+        .join(Inventory, Inventory.product_id == Products.id)
+        .filter(Inventory.distribution_center_id == dc_id)
+        .distinct()
+        .order_by(Brands.name.asc())
+        .all()
     )
-    return response
+    
+    brands_list = [
+        {
+            'id': brand.id, 
+            'name': brand.name, 
+            'country': brand.country, 
+            'description': brand.description
+        } for brand in brands
+    ]
+    return jsonify({
+        "distribution_center": dc.name,
+        "brands": brands_list
+    })
 
-@app.route('/api/brands', methods=['POST'])
-def create_brand():
+@app.route('/api/dcs/<int:dc_id>/brands', methods=['POST'])
+def create_brand_for_dc(dc_id):
     """Create a new brand"""
+    dc = DistributionCenter.query.get_or_404(dc_id)
     data = request.get_json()
     
     if not data or not data.get('name'):
-        return jsonify({'error': 'Name is required'}), 400
+        return jsonify({'error': 'Brand name is required'}), 400
+    
+    existing_brand = Brands.query.filter_by(name=data['name']).first()
+    if existing_brand:
+        return jsonify({'message': 'Brand already exists', 'brand_id': existing_brand.id}), 200
     
     brand = Brands(
         name=data['name'],
@@ -64,41 +86,29 @@ def create_brand():
         db.session.rollback()
         return jsonify({'error': str(e)}), 400
     
-@app.route('/api/brands/<int:brand_id>', methods=['GET'])
-def get_brand(brand_id):
-    """Get a specific brand"""
-    brand = Brands.query.get_or_404(brand_id)
-    return jsonify(brand.to_dict(rules=('-products',)))
-
-@app.route('/api/brands/<int:brand_id>', methods=['PUT'])
-def update_brand(brand_id):
-    """Update a brand"""
-    brand = Brands.query.get_or_404(brand_id)
-    data = request.get_json()
-    
-    if not data:
-        return jsonify({'error': 'No data provided'}), 400
-    
-    brand.name = data.get('name', brand.name)
-    brand.country = data.get('country', brand.country)
-    brand.description = data.get('description', brand.description)
-    
-    try:
-        db.session.commit()
-        return jsonify(brand.to_dict(rules=('-products',)))
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 400
-    
-@app.route('/api/brands/<int:brand_id>', methods=['DELETE'])
-def delete_brand(brand_id):
+@app.route('/api/dcs/<int:dc_id>/brands/<int:brand_id>', methods=['DELETE'])
+def delete_brand_from_dc(dc_id, brand_id):
     """Delete a brand"""
+    dc = DistributionCenter.query.get_or_404(dc_id)
     brand = Brands.query.get_or_404(brand_id)
     
     try:
-        db.session.delete(brand)
+        inventories = (
+            db.session.query(Inventory)
+            .join(Products)
+            .filter(
+                Inventory.distribution_center_id == dc_id,
+                Products.brand_id == brand_id
+            )
+            .all()
+        )
+        if not inventories:
+            return jsonify({'message': f"No inventory for brand '{brand.name}' in DC '{dc.name}'"}), 404
+        for inv in inventories:
+            db.session.delete(inv)
+            
         db.session.commit()
-        return jsonify({'message': 'Brand deleted successfully'})
+        return jsonify({'message': 'Brand deleted successfully'}), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 400
@@ -196,33 +206,6 @@ def delete_product(product_id):
         return jsonify({'error': str(e)}), 400
 
 # Inventory management endpoints
-@app.route('/api/products/<int:product_id>/adjust-stock', methods=['POST'])
-def adjust_stock(product_id):
-    """Adjust product stock (add or subtract)"""
-    product = Products.query.get_or_404(product_id)
-    data = request.get_json() or {}
-    if 'amount' not in data:
-        return jsonify({'error': 'Amount is required'}), 400
-    amount = data['amount']
-    action = data.get('action', 'add')
-    inv_count = Inventory.query.filter_by(product_id=product.id).count()
-    if inv_count > 0:
-        return jsonify({'error': 'Per-DC inventory exists. Use /api/dcs/<dc_id>/inventory/<product_id>/adjust'}), 400
-    if action == 'add':
-        product.stock += amount
-    elif action == 'subtract':
-        if product.stock - amount < 0:
-            return jsonify({'error': 'Insufficient stock'}), 400
-        product.stock -= amount
-    else:
-        return jsonify({'error': 'Action must be add or subtract'}), 400
-    try:
-        db.session.commit()
-        return jsonify({'message': f'Stock {action}ed successfully', 'new_stock': product.stock})
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 400
-    
 @app.route('/api/dcs/<int:dc_id>/low-stock', methods=['GET'])
 def get_low_stock_products_for_dc(dc_id):
     """Get products with low stock"""
@@ -233,23 +216,6 @@ def get_low_stock_products_for_dc(dc_id):
     ).all()
     products_dict = [inv.to_dict() for inv in inventories]
     return jsonify(products_dict)
-
-# @app.route('/api/inventory/summary', methods=['GET'])
-# def get_inventory_summary():
-#     """Get inventory summary statistics"""
-#     total_products = Products.query.count()
-#     total_stock = db.session.query(db.func.sum(Inventory.quantity)).scalar()
-#     if total_stock is None:
-#         total_stock = db.session.query(db.func.sum(Products.stock)).scalar() or 0
-#     low_stock_count = Products.query.filter(Products.stock < 10).count()
-#     total_brands = Brands.query.count()
-    
-#     return jsonify({
-#         'total_products': total_products,
-#         'total_stock_value': float(total_stock),
-#         'low_stock_items': low_stock_count,
-#         'total_brands': total_brands
-#     })
     
 @app.route("/api/dcs/<int:dc_id>/summary", methods=['GET'])
 def get_dc_summary(dc_id):
