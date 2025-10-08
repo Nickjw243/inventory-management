@@ -1,9 +1,9 @@
 from flask import make_response, request, jsonify, render_template
-from flask_jwt_extended import (
-    create_access_token,
-    get_jwt_identity,
-    jwt_required,
-)
+# from flask_jwt_extended import (
+#     create_access_token,
+#     get_jwt_identity,
+#     jwt_required,
+# )
 
 from config import app, db, api
 from models import Brands, Products, DistributionCenter, Inventory, User
@@ -114,96 +114,96 @@ def delete_brand_from_dc(dc_id, brand_id):
         return jsonify({'error': str(e)}), 400
     
 # Product endpoints
-@app.route('/api/products', methods=['GET', 'POST'])
-def products():
-    if request.method == 'GET':
-        """Get all products with optional filtering"""
-        brand_id = request.args.get('brand_id', type=int)
-        low_stock = request.args.get('low_stock', type=bool)
+# @app.route('/api/products', methods=['GET', 'POST'])
+# def products():
+#     if request.method == 'GET':
+#         """Get all products with optional filtering"""
+#         brand_id = request.args.get('brand_id', type=int)
+#         low_stock = request.args.get('low_stock', type=bool)
         
-        query = Products.query
+#         query = Products.query
         
-        if brand_id:
-            query = query.filter_by(brand_id=brand_id)
-        if low_stock:
-            query = query.filter(Products.stock < 10)
+#         if brand_id:
+#             query = query.filter_by(brand_id=brand_id)
+#         if low_stock:
+#             query = query.filter(Products.stock < 10)
             
-        products = query.all()
-        products_dict = [product.to_dict(rules=('-brand.products',)) for product in products]
-        return jsonify(products_dict)
-    elif request.method == 'POST':
-        """Create new product"""
-        data = request.get_json()
+#         products = query.all()
+#         products_dict = [product.to_dict(rules=('-brand.products',)) for product in products]
+#         return jsonify(products_dict)
+#     elif request.method == 'POST':
+#         """Create new product"""
+#         data = request.get_json()
         
-        required_fields = ['name', 'sku', 'brand_id', 'price', 'stock']
-        for field in required_fields:
-            if not data or not data.get(field):
-                return jsonify({'error': f'{field} is required'}), 400
+#         required_fields = ['name', 'sku', 'brand_id', 'price', 'stock']
+#         for field in required_fields:
+#             if not data or not data.get(field):
+#                 return jsonify({'error': f'{field} is required'}), 400
         
-        product = Products(
-            name=data['name'],
-            sku=data['sku'],
-            brand_id=data['brand_id'],
-            package_size=data.get('package_size', ''),
-            price=data['price'],
-            type=data.get('type', ''),
-            abv=data.get('abv', 0.0),
-            stock=data['stock']
-        )
+#         product = Products(
+#             name=data['name'],
+#             sku=data['sku'],
+#             brand_id=data['brand_id'],
+#             package_size=data.get('package_size', ''),
+#             price=data['price'],
+#             type=data.get('type', ''),
+#             abv=data.get('abv', 0.0),
+#             stock=data['stock']
+#         )
         
-        try:
-            db.session.add(product)
-            db.session.commit()
-            return jsonify(product.to_dict(rules=('-brand.products',))), 201
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({'error': str(e)}), 400
+#         try:
+#             db.session.add(product)
+#             db.session.commit()
+#             return jsonify(product.to_dict(rules=('-brand.products',))), 201
+#         except Exception as e:
+#             db.session.rollback()
+#             return jsonify({'error': str(e)}), 400
 
-@app.route('/api/products/<int:product_id>', methods=['GET'])
-def get_product(product_id):
-    """Get a specific product"""
-    product = Products.query.filter(Products.id == product_id)
+# @app.route('/api/products/<int:product_id>', methods=['GET'])
+# def get_product(product_id):
+#     """Get a specific product"""
+#     product = Products.query.filter(Products.id == product_id)
     
-    if product:
-        response = make_response(product.to_dict(), 200)
-    else:
-        response = make_response({'error': 'Product not found'}, 404)
+#     if product:
+#         response = make_response(product.to_dict(), 200)
+#     else:
+#         response = make_response({'error': 'Product not found'}, 404)
     
-    return response
+#     return response
 
-@app.route('/api/products/<int:product_id>', methods=['PUT'])
-def update_product(product_id):
-    """Update a product"""
-    product = Products.query.get_or_404(product_id)
-    data = request.get_json()
+# @app.route('/api/products/<int:product_id>', methods=['PUT'])
+# def update_product(product_id):
+#     """Update a product"""
+#     product = Products.query.get_or_404(product_id)
+#     data = request.get_json()
     
-    if not data:
-        return jsonify({'error': 'No data provided'}), 400
+#     if not data:
+#         return jsonify({'error': 'No data provided'}), 400
     
-    # Update fields
-    for field in ['name', 'sku', 'brand_id', 'package_size', 'price', 'type', 'abv', 'stock']:
-        if field in data:
-            setattr(product, field, data[field])
+#     # Update fields
+#     for field in ['name', 'sku', 'brand_id', 'package_size', 'price', 'type', 'abv', 'stock']:
+#         if field in data:
+#             setattr(product, field, data[field])
     
-    try:
-        db.session.commit()
-        return jsonify(product.to_dict(rules=('-brand.products',)))
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 400
+#     try:
+#         db.session.commit()
+#         return jsonify(product.to_dict(rules=('-brand.products',)))
+#     except Exception as e:
+#         db.session.rollback()
+#         return jsonify({'error': str(e)}), 400
 
-@app.route('/api/products/<int:product_id>', methods=['DELETE'])
-def delete_product(product_id):
-    """Delete a product"""
-    product = Products.query.get_or_404(product_id)
+# @app.route('/api/products/<int:product_id>', methods=['DELETE'])
+# def delete_product(product_id):
+#     """Delete a product"""
+#     product = Products.query.get_or_404(product_id)
     
-    try:
-        db.session.delete(product)
-        db.session.commit()
-        return jsonify({'message': 'Product deleted successfullly'})
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 400
+#     try:
+#         db.session.delete(product)
+#         db.session.commit()
+#         return jsonify({'message': 'Product deleted successfullly'})
+#     except Exception as e:
+#         db.session.rollback()
+#         return jsonify({'error': str(e)}), 400
 
 # Inventory management endpoints
 @app.route('/api/dcs/<int:dc_id>/low-stock', methods=['GET'])
@@ -315,45 +315,45 @@ def transfer_between_dcs():
         return jsonify({'error': str(e)}), 400
     
 # Auth endpoints
-@app.route('/api/auth/register', methods=['POST'])
-def register():
-    data = request.get_json() or {}
-    username = data.get('username')
-    password = data.get('password')
-    dc_id = data.get('distribution_center_id')
-    if not username or not password:
-        return jsonify({'error': 'username and password are required'}), 400
-    if User.query.filter_by(username=username).first():
-        return jsonify({'error': 'username already exists'}), 400
-    user = User(username=username, password_hash=_hash_password(password), distribution_center_id=dc_id)
-    db.session.add(user)
-    try:
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 400
-    token = create_access_token(identity={'id': user.id, 'username': user.username})
-    return jsonify({'access_token': token})
+# @app.route('/api/auth/register', methods=['POST'])
+# def register():
+#     data = request.get_json() or {}
+#     username = data.get('username')
+#     password = data.get('password')
+#     dc_id = data.get('distribution_center_id')
+#     if not username or not password:
+#         return jsonify({'error': 'username and password are required'}), 400
+#     if User.query.filter_by(username=username).first():
+#         return jsonify({'error': 'username already exists'}), 400
+#     user = User(username=username, password_hash=_hash_password(password), distribution_center_id=dc_id)
+#     db.session.add(user)
+#     try:
+#         db.session.commit()
+#     except Exception as e:
+#         db.session.rollback()
+#         return jsonify({'error': str(e)}), 400
+#     token = create_access_token(identity={'id': user.id, 'username': user.username})
+#     return jsonify({'access_token': token})
 
-@app.route('/api/auth/login', methods=['POST'])
-def login():
-    data = request.get_json() or {}
-    username = data.get('username')
-    password = data.get('password')
-    if not username or not password:
-        return jsonify({'error': 'username and password are required'}), 400
-    user = User.query.filter_by(username=username).first()
-    if not user or not _verify_password(password, user.password_hash):
-        return jsonify({'error': 'invalid credentials'}), 401
-    token = create_access_token(identity={'id': user.id, 'username': user.username})
-    return jsonify({'access_token': token})
+# @app.route('/api/auth/login', methods=['POST'])
+# def login():
+#     data = request.get_json() or {}
+#     username = data.get('username')
+#     password = data.get('password')
+#     if not username or not password:
+#         return jsonify({'error': 'username and password are required'}), 400
+#     user = User.query.filter_by(username=username).first()
+#     if not user or not _verify_password(password, user.password_hash):
+#         return jsonify({'error': 'invalid credentials'}), 401
+#     token = create_access_token(identity={'id': user.id, 'username': user.username})
+#     return jsonify({'access_token': token})
 
-@app.route('/api/auth/me', methods=['GET'])
-@jwt_required()
-def me():
-    ident = get_jwt_identity() or {}
-    user = User.query.get_or_404(ident.get('id'))
-    return jsonify(user.to_dict())
+# @app.route('/api/auth/me', methods=['GET'])
+# @jwt_required()
+# def me():
+#     ident = get_jwt_identity() or {}
+#     user = User.query.get_or_404(ident.get('id'))
+#     return jsonify(user.to_dict())
 
 # Helpers
 from werkzeug.security import generate_password_hash, check_password_hash
