@@ -16,8 +16,11 @@ export default function DCNavTabs({ dcId }) {
     ]
 
     function isActive(path) {
-        if (path === "/dcs" && pathname === "/dcs") return true
-        if (path !== "/dcs" && pathname.startsWith(path)) return true
+        if (path === "/" && pathname === "/") return true
+        if (path === `/dcs/${dcId}` && pathname === `/dcs/${dcId}`) return true
+        if (pathname.startsWith(path) && path !== "/" && path !== `/dcs/${dcId}`) {
+            return true
+        }
         return false
     }
 

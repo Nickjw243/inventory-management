@@ -48,7 +48,6 @@ export default function DCProductsPage({ params }) {
                                 <th>Price</th>
                                 <th>Quantity</th>
                                 <th>Brand</th>
-                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -62,9 +61,6 @@ export default function DCProductsPage({ params }) {
                                     <td>{item.product?.price?.toFixed(2)}</td>
                                     <td>{item.quantity}</td>
                                     <td>{item.product?.brand?.name}</td>
-                                    <td>
-                                        <button className="btn btn-danger">Delete</button>
-                                    </td>
                                 </tr>
                             ))}
                         </tbody>

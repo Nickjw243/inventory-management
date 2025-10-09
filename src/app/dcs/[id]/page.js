@@ -57,55 +57,55 @@ export default function DCDetailPage({ params }) {
 
     return (
         <div className="container">
-            <div className="header">
+            <header className="header">
                 <h1>{dc?.name || "DC"} Inventory</h1>
                 {error && <p>{error}</p>}
                 <DCNavTabs dcId={id} />
-                <div className="tab-content">
-                    <div id="dashboard" className="tab-pane active">
-                        <h2>Inventory Overview</h2>
-                        <div className="stats-grid">
-                            {summary ? (
-                                <>
-                                    <div className="stat-card">Products: {summary.total_products}</div>
-                                    <div className="stat-card">Brands: {summary.total_brands}</div>
-                                    <div className="stat-card">Value: {summary.total_stock_value}</div>
-                                    <div className="stat-card">Low Stock: {summary.low_stock_items}</div>
-                                </>
-                            ) : (
-                                <p>Loading summary...</p>
-                            )}
-                        </div>
-                        <h3>Low Stock Items</h3>
-                        {loadingLowStock ? (
-                            <p>Loading...</p>
-                        ) : lowStock.length === 0 ? (
-                            <p>No low stock items!</p>
+            </header>
+            <div className="tab-content">
+                <div id="dashboard" className="tab-pane active">
+                    <h2>Inventory Overview</h2>
+                    <div className="stats-grid">
+                        {summary ? (
+                            <>
+                                <div className="stat-card">Products: {summary.total_products}</div>
+                                <div className="stat-card">Brands: {summary.total_brands}</div>
+                                <div className="stat-card">Value: {summary.total_stock_value}</div>
+                                <div className="stat-card">Low Stock: {summary.low_stock_items}</div>
+                            </>
                         ) : (
-                            <div className="table-container">
-                                <table id="lowStockTable">
-                                    <thead>
-                                        <tr>
-                                            <th>Product</th>
-                                            <th>Brand</th>
-                                            <th>Stock</th>
-                                            <th>Price</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {lowStock.map((item) => (
-                                            <tr key={item.id}>
-                                                <td>{item.product.name}</td>
-                                                <td>{item.product.brand.name}</td>
-                                                <td className="low-stock">{item.quantity}</td>
-                                                <td>${item.product.price}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                            <p>Loading summary...</p>
                         )}
                     </div>
+                    <h3>Low Stock Items</h3>
+                    {loadingLowStock ? (
+                        <p>Loading...</p>
+                    ) : lowStock.length === 0 ? (
+                        <p>No low stock items!</p>
+                    ) : (
+                        <div className="table-container">
+                            <table id="lowStockTable">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Brand</th>
+                                        <th>Stock</th>
+                                        <th>Price</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {lowStock.map((item) => (
+                                        <tr key={item.id}>
+                                            <td>{item.product.name}</td>
+                                            <td>{item.product.brand.name}</td>
+                                            <td className="low-stock">{item.quantity}</td>
+                                            <td>${item.product.price}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

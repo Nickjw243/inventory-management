@@ -265,7 +265,7 @@ def adjust_dc_inventory(dc_id, product_id):
     action = data.get('action', 'add')
     if amount is None:
         return jsonify({'error': 'amount is required'}), 400
-    inv = Inventory.query.filet_by(distribution_center_id = dc.id, product_id=product.id).first()
+    inv = Inventory.query.filter_by(distribution_center_id = dc.id, product_id=product.id).first()
     if not inv:
         inv = Inventory(distribution_center_id=dc.id, product_id=product.id, quantity=0)
         db.session.add(inv)
@@ -278,7 +278,7 @@ def adjust_dc_inventory(dc_id, product_id):
     else:
         return jsonify({'error': 'action must be add or subtract'}), 400
     try:
-        db.sesson.commit()
+        db.session.commit()
         return jsonify(inv.to_dict())
     except Exception as e:
         db.session.rollback()

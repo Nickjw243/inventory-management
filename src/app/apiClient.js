@@ -16,8 +16,15 @@ export async function apiPost(path, body) {
         },
         body: JSON.stringify(body || {}),
     })
-    if (!res.ok) throw new Error(`POST ${path} failed: ${res.status}`)
-    return res.json()
+
+    const data = await res.json().catch(() => ({}))
+
+    if (!res.ok) {
+        console.error("API error response:", data)
+        const message = data.error || `POST ${path} failed: ${res.status}`
+        throw new Error(message)
+    }
+    return data
 }
 
 export async function apiPut(path, body) {
@@ -36,4 +43,11 @@ export async function apiDelete(path) {
     })
     if (!res.ok) throw new Error(`DELETE ${path} failed: ${res.status}`)
     return res.json()
+}
+
+export async function adjustStock(dcId, productId, amount, action = 'add') {
+    return apiPost(`/api/dcs/${dcId}/inventory/${productId}/adjust`, {
+        amount,
+        action,
+    })
 }
