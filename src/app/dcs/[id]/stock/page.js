@@ -12,17 +12,31 @@ export default function DCStockManagementPage({ params }) {
 
     const [dc, setDc] = useState(null)
     const [products, setProducts] = useState([])
+    const [brands, setBrands] = useState([])
     const [allDcs, setAllDcs] = useState([])
     const [error, setError] = useState("")
     const [message, setMessage] = useState("")
     const [inputValues, setInputValues] = useState({})
     const [showTransferForm, setShowTransferForm] = useState(false)
+    const [showAddProductForm, setShowAddProductForm] = useState(false)
+    const [showAddBrandForm, setShowAddBrandForm] = useState(false)
     
     const [transferData, setTransferData] = useState({
         product_id: "",
         to_dc_id: "",
         amount: "",
     })
+
+    async function loadBrands() {
+        try {
+            const data = await apiGet(`/api/dcs/${id}/brands`)
+            setDc(data.distribution_center)
+            setBrands(data.brands || [])
+        } catch (err) {
+            console.error("Error loading brands:", err)
+            setError(String(err))
+        }
+    }
 
     async function loadProducts() {
         try {
@@ -45,6 +59,7 @@ export default function DCStockManagementPage({ params }) {
     }
 
     useEffect(() => {
+        loadBrands()
         loadProducts()
         loadAllDcs()
     }, [id])
@@ -98,6 +113,38 @@ export default function DCStockManagementPage({ params }) {
         } catch (err) {
             console.error("Error transferring product:", err)
             alert("Error transferring product.")
+        }
+    }
+
+    async function handleAddProduct(e) {
+        e.preventDefault()
+        const form = e.target
+        const productData = {
+            name: form.productName.value,
+            sku: form.productSku.value,
+            brand_id: parseInt(form.productBrand.value),
+            package_size: form.productPackageSize.value,
+            price: parseFloat(form.productPrice.value),
+            type: form.productType.value,
+            abv: parseFloat(form.productAbv.value) || 0,
+            stock: parseInt(form.productStock.value),
+        }
+
+        if (!productData.name || !productData.sku || !productData.brand_id || isNaN(productData.price) || isNaN(productData.stock)) {
+            alert('Please fill in all required fields')
+            return
+        }
+
+        try {
+            const res = await apiPost(`/api/dcs/${id}/products`, productData)
+
+            alert(res.message || "Product added successfully!")
+            setShowAddProductForm(false)
+            loadProducts()
+            form.reset()
+        } catch (err) {
+            console.error('Error adding product:', err)
+            alert(err.message || 'error adding product')
         }
     }
 
@@ -167,7 +214,12 @@ export default function DCStockManagementPage({ params }) {
                         </tbody>
                 </table>
                 <div className="form-group">
-                    <button className="btn">Add New Product</button>
+                    <button 
+                        className="btn"
+                        onClick={() => setShowAddProductForm(!showAddProductForm)}
+                    >
+                        {showAddProductForm ? "Cancel" : "Add Product"}
+                    </button>
                     <button className="btn">Add New Brand</button>
                     <button 
                         className="btn" 
@@ -176,6 +228,52 @@ export default function DCStockManagementPage({ params }) {
                         {showTransferForm ? "Cancel Transfer" : "Transfer Product"}
                     </button>
                 </div>
+                {showAddProductForm && (
+                    <div className="add-product">
+                        <form onSubmit={handleAddProduct} className="add-product-form" id="addProductForm">
+                            <h3>Add Product</h3>
+                            <div className="form-group">
+                                <label>Product Name:</label>
+                                <input id="productName" name="productName" required />
+                            </div>
+                            <div className="form-group">
+                                <label>SKU:</label>
+                                <input id="productSku" name="productSku" required />
+                            </div>
+                            <div className="form-group">
+                                <label>Brand:</label>
+                                <select id="productBrand" name="productBrand" required>
+                                    {brands.map((b) => (
+                                    <option key={b.id} value={b.id}>{b.name}</option>
+                                    ))}
+                                </select>
+                                </div>
+                                <div className="form-group">
+                                    <label>Package Size:</label>
+                                    <input id="productPackageSize" name="productPackageSize"/>
+                                </div>
+                                <div className="form-group">
+                                    <label>Price:</label>
+                                    <input id="productPrice" name="productPrice" type="number" step="0.01" required />
+                                </div>
+                                <div className="form-group">
+                                    <label>Type:</label>
+                                    <input id="productType" name="productType" />
+                                </div>
+                                <div className="form-group">
+                                    <label>ABV:</label>
+                                    <input id="productAbv" name="productAbv" type="number" step="0.1" />
+                                </div>
+                                <div className="form-group">
+                                    <label>Initial Stock:</label>
+                                    <input id="productStock" name="productStock" type="number" required />
+                                </div>
+                                <button className="btn" type="submit">Save Product</button>
+                                <button className="btn btn-danger" type="button" onClick={() => setShowAddProductForm(!showAddProductForm)}>Cancel</button>
+                        </form>
+                    </div>
+                )}
+
                 {showTransferForm && (
                     <div className="transfer-section">
                         <form onSubmit={handleTransferProduct} className="transfer-form" id="transferProductForm">

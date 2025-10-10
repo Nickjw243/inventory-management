@@ -114,50 +114,49 @@ def delete_brand_from_dc(dc_id, brand_id):
         return jsonify({'error': str(e)}), 400
     
 # Product endpoints
-# @app.route('/api/products', methods=['GET', 'POST'])
-# def products():
-#     if request.method == 'GET':
-#         """Get all products with optional filtering"""
-#         brand_id = request.args.get('brand_id', type=int)
-#         low_stock = request.args.get('low_stock', type=bool)
+@app.route('/api/dcs/<int:dc_id>/products', methods=['POST'])
+def add_new_product_to_dc(dc_id):
+    """Create a new product"""
+    dc = DistributionCenter.query.get_or_404(dc_id)
+    data = request.get_json()
+    
+    required_fields = ['name', 'sku', 'brand_id', 'price', 'stock']
+    for field in required_fields:
+        if not data.get(field):
+            return jsonify({'error': f'{field} is required'}), 400
+    
+    brand = Brands.query.get_or_404(data['brand_id'])
+    
+    existing_product = Products.query.filter_by(name=data['name']).first()
+    if existing_product:
+        return jsonify({'message': 'Product already exists', 'product_id': existing_product.id}), 200
+    
+    product = Products(
+        name=data['name'],
+        sku=data['sku'],
+        brand_id=brand.id,
+        package_size=data.get('package_size', ''),
+        price=data['price'],
+        type=data.get('type', ''),
+        abv=data.get('abv', 0.0),
+        stock=data.get('stock')
+    )
+    
+    db.session.add(product)
+    db.session.flush()
+    inv = Inventory(distribution_center_id=dc.id, product_id=product.id, quantity=data['stock'])
+    db.session.add(inv)
         
-#         query = Products.query
-        
-#         if brand_id:
-#             query = query.filter_by(brand_id=brand_id)
-#         if low_stock:
-#             query = query.filter(Products.stock < 10)
-            
-#         products = query.all()
-#         products_dict = [product.to_dict(rules=('-brand.products',)) for product in products]
-#         return jsonify(products_dict)
-#     elif request.method == 'POST':
-#         """Create new product"""
-#         data = request.get_json()
-        
-#         required_fields = ['name', 'sku', 'brand_id', 'price', 'stock']
-#         for field in required_fields:
-#             if not data or not data.get(field):
-#                 return jsonify({'error': f'{field} is required'}), 400
-        
-#         product = Products(
-#             name=data['name'],
-#             sku=data['sku'],
-#             brand_id=data['brand_id'],
-#             package_size=data.get('package_size', ''),
-#             price=data['price'],
-#             type=data.get('type', ''),
-#             abv=data.get('abv', 0.0),
-#             stock=data['stock']
-#         )
-        
-#         try:
-#             db.session.add(product)
-#             db.session.commit()
-#             return jsonify(product.to_dict(rules=('-brand.products',))), 201
-#         except Exception as e:
-#             db.session.rollback()
-#             return jsonify({'error': str(e)}), 400
+    try:
+        db.session.commit()
+        return jsonify({
+            'message': 'Product added successfully',
+            'product': product.to_dict(),
+            'inventory': inv.to_dict()
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
 
 # @app.route('/api/products/<int:product_id>', methods=['GET'])
 # def get_product(product_id):
