@@ -36,15 +36,18 @@ def get_brands_for_dc(dc_id):
     """Get all brands for a DC"""
     dc = DistributionCenter.query.get_or_404(dc_id)
     
-    brands = (
+    linked_brands = (
         db.session.query(Brands)
         .join(Products, Products.brand_id == Brands.id)
         .join(Inventory, Inventory.product_id == Products.id)
         .filter(Inventory.distribution_center_id == dc_id)
         .distinct()
-        .order_by(Brands.name.asc())
-        .all()
+        # .order_by(Brands.name.asc())
+        # .all()
     )
+    all_brands = Brands.query.distinct()
+    
+    brand_set = {b.id: b for b in list(linked_brands) + list(all_brands)}.values()
     
     brands_list = [
         {
@@ -52,11 +55,11 @@ def get_brands_for_dc(dc_id):
             'name': brand.name, 
             'country': brand.country, 
             'description': brand.description
-        } for brand in brands
+        } for brand in brand_set
     ]
     return jsonify({
         "distribution_center": dc.name,
-        "brands": brands_list
+        "brands": sorted(brands_list, key=lambda b: b['name'])
     })
 
 @app.route('/api/dcs/<int:dc_id>/brands', methods=['POST'])

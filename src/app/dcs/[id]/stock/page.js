@@ -148,6 +148,37 @@ export default function DCStockManagementPage({ params }) {
         }
     }
 
+    async function handleAddBrand(e) {
+        e.preventDefault()
+        const form = e.target
+        const brandData = {
+            name: form.brandName.value.trim(),
+            country: form.brandCountry.value.trim(),
+            description: form.brandDescription.value.trim(),
+        }
+
+        if (!brandData.name || !brandData.country || !brandData.description) {
+            alert('Please fill in required fields')
+            return
+        }
+
+        try {
+            const res = await apiPost(`/api/dcs/${id}/brands`, brandData)
+
+            alert(res.message || "Brand added successfully!")
+            setShowAddBrandForm(false)
+            form.reset()
+            if (res.brand) {
+                setBrands(prev => [...prev, res.brand])
+            } else {
+                await loadBrands()
+            }
+        } catch (err) {
+            console.error("Error adding brand:", err)
+            alert(err.message || 'Error adding product')
+        }
+    }
+
     return (
         <div className="container">
             <header className="header">
@@ -220,7 +251,11 @@ export default function DCStockManagementPage({ params }) {
                     >
                         {showAddProductForm ? "Cancel" : "Add Product"}
                     </button>
-                    <button className="btn">Add New Brand</button>
+                    <button 
+                        className="btn"
+                        onClick={() => setShowAddBrandForm(!showAddBrandForm)}
+                    >
+                        {showAddBrandForm ? "Cancel" : "Add Brand"}</button>
                     <button 
                         className="btn" 
                         onClick={() => setShowTransferForm((prev) => !prev)}
@@ -273,7 +308,27 @@ export default function DCStockManagementPage({ params }) {
                         </form>
                     </div>
                 )}
-
+                {showAddBrandForm && (
+                    <div className="add-brand">
+                        <form onSubmit={handleAddBrand} className="add-brand-form" id="addBrandForm">
+                            <h3>Add Brand</h3>
+                            <div className="form-group">
+                                <label>Name:</label>
+                                <input id="brandName" name="brandName" />
+                            </div>
+                            <div className="form-group">
+                                <label>Country:</label>
+                                <input id="brandCountry" name="brandCountry" />
+                            </div>
+                            <div className="form-group">
+                                <label>Description:</label>
+                                <input id="brandDescription" name="brandDescription" />
+                            </div>
+                            <button className="btn" type="submit">Save Brand</button>
+                            <button className="btn btn-danger" type="button" onClick={() => setShowAddBrandForm(!showAddBrandForm)}>Cancel</button>
+                        </form>
+                    </div>
+                )}
                 {showTransferForm && (
                     <div className="transfer-section">
                         <form onSubmit={handleTransferProduct} className="transfer-form" id="transferProductForm">
