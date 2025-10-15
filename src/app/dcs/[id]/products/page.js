@@ -59,7 +59,7 @@ export default function DCProductsPage({ params }) {
                                     <td>{item.product?.abv}</td>
                                     <td>{item.product?.package_size}</td>
                                     <td>{item.product?.price?.toFixed(2)}</td>
-                                    <td>{item.quantity}</td>
+                                    <td className={item.quantity < 10 ? "low-stock" : ""}>{item.quantity}</td>
                                     <td>{item.product?.brand?.name}</td>
                                 </tr>
                             ))}

@@ -419,10 +419,10 @@
 //                           <td className={p.stock < 10 ? "low-stock" : ""}>{p.stock}</td>
 //                           <td>${p.price}</td>
 //                           <td className="stock-controls">
-//                             <input type="number" className="stock-input" id="stockInputs${p.id}" placeholder="Qty" min="1" ref={(el) => (inputRef = el)}></input>
-//                             <button className="btn btn-success" onClick={async () => { await adjustStock(p.id, "add", parseInt(inputRef.value)) 
-//                               inputRef.value = ""}}>Add</button>
-//                             <button className="btn btn-danger" onClick={async () => {await adjustStock(p.id, "subtract", parseInt(inputRef.value))
+                            // <input type="number" className="stock-input" id="stockInputs${p.id}" placeholder="Qty" min="1" ref={(el) => (inputRef = el)}></input>
+                            // <button className="btn btn-success" onClick={async () => { await adjustStock(p.id, "add", parseInt(inputRef.value)) 
+                            //   inputRef.value = ""}}>Add</button>
+                            // <button className="btn btn-danger" onClick={async () => {await adjustStock(p.id, "subtract", parseInt(inputRef.value))
 //                               inputRef.value = ""}}>Delete</button>
 //                           </td>
 //                         </tr>
@@ -457,7 +457,6 @@ function Home() {
     const [dcs, setDcs] = useState([])
     const [selected, setSelected] = useState("")
     const [error, setError] = useState("")
-    // const [activeTab, setActiveTab] = useState("dashboard")
 
     useEffect(() => {
         (async () => {
@@ -471,29 +470,20 @@ function Home() {
         })()
     }, [])
 
-    function goToSelected() {
-        if (selected) window.location.href = `/dcs/${selected}`
+    function goToSelected(id) {
+        window.location.href = `/dcs/${id}`
     }
 
     return (
         <div className="container">
             <div className="header">
                 <h1>Beer Inventory System</h1>
-                {/* <div className="nav-tabs">
-                    {["All DCs"].map((tab) => (
-                        <button
-                            key={tab}
-                            className={`nav-tab ${activeTab === tab ? "active" : ""}`}
-                            onClick={() => setActiveTab(tab)}
-                            >{tab[0].toUpperCase() + tab.slice(1)}</button>
-                    ))}
-                </div> */}
                 <div className="tab-content">
-                    <div id="home" className="tab-pane active">
+                    <div id="home">
                         <h2>Choose a Distribution Center</h2>
                         {error && <p>{error}</p>}
                         <div>
-                            <select value={selected} onChange={(e) => setSelected(e.target.value)}
+                            {/* <select value={selected} onChange={(e) => setSelected(e.target.value)}
                             >
                                 {dcs.map((dc) => (
                                     <option key={dc.id} value={dc.id}>
@@ -501,7 +491,16 @@ function Home() {
                                     </option>
                                 ))}
                             </select>
-                            <button onClick={goToSelected} disabled={!selected}>View</button>
+                            <button onClick={goToSelected} disabled={!selected}>View</button> */}
+                            <table id="DC-table">
+                                <tbody>
+                                    {dcs.map((dc) => (
+                                        <tr key={dc.id}>
+                                            <td onClick={() => goToSelected(dc.id)}>{dc.name} ({dc.code})</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>

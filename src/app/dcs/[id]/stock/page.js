@@ -211,7 +211,7 @@ export default function DCStockManagementPage({ params }) {
                                     <td>{item.product?.abv}</td>
                                     <td>{item.product?.package_size}</td>
                                     <td>{item.product?.price?.toFixed(2)}</td>
-                                    <td>{item.quantity}</td>
+                                    <td className={item.quantity < 10 ? "low-stock" : ""}>{item.quantity}</td>
                                     <td>{item.product?.brand?.name}</td>
                                     <td className="stock-controls">
                                         <input
@@ -279,32 +279,31 @@ export default function DCStockManagementPage({ params }) {
                                 <label>Brand:</label>
                                 <select id="productBrand" name="productBrand" required>
                                     {brands.map((b) => (
-                                    <option key={b.id} value={b.id}>{b.name}</option>
+                                        <option key={b.id} value={b.id}>{b.name}</option>
                                     ))}
                                 </select>
-                                </div>
-                                <div className="form-group">
-                                    <label>Package Size:</label>
-                                    <input id="productPackageSize" name="productPackageSize"/>
-                                </div>
-                                <div className="form-group">
-                                    <label>Price:</label>
-                                    <input id="productPrice" name="productPrice" type="number" step="0.01" required />
-                                </div>
-                                <div className="form-group">
-                                    <label>Type:</label>
-                                    <input id="productType" name="productType" />
-                                </div>
-                                <div className="form-group">
-                                    <label>ABV:</label>
-                                    <input id="productAbv" name="productAbv" type="number" step="0.1" />
-                                </div>
-                                <div className="form-group">
-                                    <label>Initial Stock:</label>
-                                    <input id="productStock" name="productStock" type="number" required />
-                                </div>
-                                <button className="btn" type="submit">Save Product</button>
-                                <button className="btn btn-danger" type="button" onClick={() => setShowAddProductForm(!showAddProductForm)}>Cancel</button>
+                            </div>
+                            <div className="form-group">
+                                <label>Package Size:</label>
+                                <input id="productPackageSize" name="productPackageSize"/>
+                            </div>
+                            <div className="form-group">
+                                <label>Price:</label>
+                                <input id="productPrice" name="productPrice" type="number" step="0.01" required />
+                            </div>
+                            <div className="form-group">
+                                <label>Type:</label>
+                                <input id="productType" name="productType" />
+                            </div>
+                            <div className="form-group">
+                                <label>ABV:</label>
+                                <input id="productAbv" name="productAbv" type="number" step="0.1" />
+                            </div>
+                            <div className="form-group">
+                                <label>Initial Stock:</label>
+                                <input id="productStock" name="productStock" type="number" required />
+                            </div>
+                            <button className="btn btn-success" type="submit">Save Product</button>
                         </form>
                     </div>
                 )}
@@ -324,8 +323,7 @@ export default function DCStockManagementPage({ params }) {
                                 <label>Description:</label>
                                 <input id="brandDescription" name="brandDescription" />
                             </div>
-                            <button className="btn" type="submit">Save Brand</button>
-                            <button className="btn btn-danger" type="button" onClick={() => setShowAddBrandForm(!showAddBrandForm)}>Cancel</button>
+                            <button className="btn btn-success" type="submit">Save Brand</button>
                         </form>
                     </div>
                 )}
